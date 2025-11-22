@@ -26,7 +26,6 @@ export default function Home() {
       
       // Read the response body even if status is not OK
       const data = await resp.json();
-      
       // Build the row with data from response
       let rawText = data.raw_text || '';
       
@@ -52,7 +51,8 @@ export default function Home() {
         brand: data.brand || brand,
         mentioned: data.mentioned || 'No',
         position: data.position || '',
-        raw_text: rawText
+        raw_text: rawText,
+        expanded: false
       };
       setResults(prev => [row, ...prev]);
       
@@ -68,7 +68,8 @@ export default function Home() {
         brand: brand,
         mentioned: 'No',
         position: '',
-        raw_text: `Network Error: ${err.message || 'Failed to connect to server'}`
+        raw_text: `Network Error: ${err.message || 'Failed to connect to server'}`,
+        expanded: false
       };
       setResults(prev => [row, ...prev]);
       setError(`Request failed: ${err.message || 'Network error'}`);
@@ -91,8 +92,25 @@ export default function Home() {
     URL.revokeObjectURL(url);
   }
 
+  // Truncate helper: show up to 4 lines or ~300 chars
+  function getTruncated(text) {
+    if (!text) return 'N/A';
+    const lines = text.split('\n');
+    if (lines.length > 4) {
+      return lines.slice(0, 4).join('\n') + '\n...';
+    }
+    if (text.length > 300) {
+      return text.slice(0, 300) + '...';
+    }
+    return text;
+  }
+
+  function toggleExpanded(index) {
+    setResults(prev => prev.map((item, i) => i === index ? { ...item, expanded: !item.expanded } : item));
+  }
+
   return (
-    <div style={{ maxWidth: 900, margin: '40px auto', fontFamily: 'Segoe UI, Roboto, Arial' }}>
+    <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 0', fontFamily: 'Segoe UI, Roboto, Arial', display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
       <h1>Gemini Brand Mention Checker (Demo)</h1>
       <form onSubmit={runCheck} style={{ marginBottom: 20 }}>
         <div style={{ marginBottom: 8 }}>
@@ -127,21 +145,37 @@ export default function Home() {
             {results.length === 0 && (
               <tr><td colSpan={5} style={{ padding: 12 }}>No results yet. Run a check above.</td></tr>
             )}
-            {results.map((r, idx) => (
-              <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
-                <td style={{ padding: 8 }}>{r.prompt}</td>
-                <td style={{ padding: 8 }}>{r.brand}</td>
-                <td style={{ padding: 8 }}>{r.mentioned}</td>
-                <td style={{ padding: 8 }}>{r.position}</td>
-                <td style={{ padding: 8, maxWidth: 300, wordBreak: 'break-word', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>{r.raw_text || 'N/A'}</td>
-              </tr>
-            ))}
+            {results.map((r, idx) => {
+              const rawText = r.raw_text || 'N/A';
+              const expanded = !!r.expanded;
+              const isLong = rawText.length > 50 || rawText.split('\n').length > 4;
+              const display = expanded ? rawText : (isLong ? getTruncated(rawText) : rawText);
+              return (
+                <tr key={idx} style={{ borderBottom: '1px solid #f0f0f0' }}>
+                  <td style={{ padding: 8 }}>{r.prompt}</td>
+                  <td style={{ padding: 8 }}>{r.brand}</td>
+                  <td style={{ padding: 8 }}>{r.mentioned}</td>
+                  <td style={{ padding: 8 }}>{r.position}</td>
+                  <td style={{ padding: 8, maxWidth: 300, wordBreak: 'break-word', fontSize: '12px', fontFamily: 'monospace', whiteSpace: 'pre-wrap' }}>
+                    <div style={{ whiteSpace: 'pre-wrap' }}>{display}</div>
+                    {isLong && (
+                      <div style={{ marginTop: 6 }}>
+                        <button onClick={() => toggleExpanded(idx)} style={{ padding: '4px 8px', fontSize: 12 }}>{expanded ? 'Show less' : 'Show more'}</button>
+                      </div>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
 
-      <footer style={{ marginTop: 24, color: '#666', fontSize: 13 }}>
-        <div>Frontend calls: <code>{API_URL}</code></div>
+      <footer style={{ marginTop: 'auto', paddingTop: 24, color: '#666', fontSize: 13 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div>Frontend calls: <code>{API_URL}</code></div>
+          <div style={{ textAlign: 'right' }}>by Himanshu Ranpariya</div>
+        </div>
       </footer>
     </div>
   );
