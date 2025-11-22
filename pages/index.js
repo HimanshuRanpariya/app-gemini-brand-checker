@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const API_URL = 'http://localhost:5000/api/check';
+const API_URL = process.env.NEXT_PUBLIC_API_URL + '/api/check';
 
 export default function Home() {
   const [prompt, setPrompt] = useState('');
